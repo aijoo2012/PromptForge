@@ -121,7 +121,21 @@ class ChatApp:
         self.provider_combo = ttk.Combobox(
             toolbar_row1,
             textvariable=self.provider_var,
-            values=["pollinations", "huggingface", "tongyi", "yige", "hunyuan", "agnes", "freeapi", "replicate", "stability"],
+            values=[
+            "pollinations", 
+            "huggingface", 
+            "tongyi", 
+            "yige", 
+            "hunyuan", 
+            "agnes", 
+            "freeapi", 
+            "replicate", 
+            "stability",
+            "free_multimodal_proxy",   # 新增
+            "freellmapi",               # 新增
+            "siliconflow",              # 新增
+            "openrouter",               # 新增            
+            ],
             width=12,
             state="readonly"
         )

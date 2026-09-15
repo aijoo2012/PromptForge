@@ -85,6 +85,30 @@ class Settings:
     # ✅ 新增 Stability AI API
     stability_api_key: str = os.getenv("STABILITY_API_KEY", "")
     stability_model: str = os.getenv("STABILITY_MODEL", "stable-diffusion-xl-1024-v1-0")
+
+    # ----- Free Multimodal Proxy（无需注册，本地部署） -----
+    free_multimodal_proxy_url: str = os.getenv(
+        "FREE_MULTIMODAL_PROXY_URL", "http://localhost:8080/v1"
+    )
+    free_multimodal_proxy_model: str = os.getenv(
+        "FREE_MULTIMODAL_PROXY_MODEL", "zimage"
+    )
+    free_multimodal_proxy_token: str = os.getenv("FREE_MULTIMODAL_PROXY_TOKEN", "")
+
+    # ----- FreeLLMAPI（本地部署，文本为主） -----
+    freellmapi_url: str = os.getenv("FREELLMAPI_URL", "http://localhost:3000/v1")
+    freellmapi_model: str = os.getenv("FREELLMAPI_MODEL", "auto")
+    freellmapi_key: str = os.getenv("FREELLMAPI_KEY", "freellmapi")
+
+    # ----- 硅基流动 -----
+    siliconflow_api_key: str = os.getenv("SILICONFLOW_API_KEY", "")
+    siliconflow_model: str = os.getenv("SILICONFLOW_MODEL", "sd-turbo")
+
+    # ----- OpenRouter -----
+    openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
+    openrouter_model: str = os.getenv(
+        "OPENROUTER_MODEL", "bytedance-seed/seedream-4.5"
+    )
     
     # --- 生成参数 ---
     default_steps: int = int(os.getenv("DEFAULT_STEPS", "20"))
@@ -169,6 +193,26 @@ class Settings:
                 "STABILITY_API_KEY": self.stability_api_key,
                 "STABILITY_MODEL": self.stability_model,
             },
+
+            "free_multimodal_proxy": {
+                "FREE_MULTIMODAL_PROXY_URL": self.free_multimodal_proxy_url,
+                "FREE_MULTIMODAL_PROXY_MODEL": self.free_multimodal_proxy_model,
+                "FREE_MULTIMODAL_PROXY_TOKEN": self.free_multimodal_proxy_token,
+            },
+            "freellmapi": {
+                "FREELLMAPI_URL": self.freellmapi_url,
+                "FREELLMAPI_MODEL": self.freellmapi_model,
+                "FREELLMAPI_KEY": self.freellmapi_key,
+            },
+            "siliconflow": {
+                "SILICONFLOW_API_KEY": self.siliconflow_api_key,
+                "SILICONFLOW_MODEL": self.siliconflow_model,
+            },
+            "openrouter": {
+                "OPENROUTER_API_KEY": self.openrouter_api_key,
+                "OPENROUTER_MODEL": self.openrouter_model,
+            },
+            
         }
     
     def get_provider_info(self, provider: str) -> dict:

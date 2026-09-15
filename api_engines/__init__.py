@@ -14,6 +14,11 @@ from .freeapi import FreeAPIEngine
 from .replicate import ReplicateEngine
 from .stability import StabilityEngine
 
+# 20260915新增导入
+from .free_multimodal_proxy import FreeMultimodalProxyEngine
+from .freellmapi import FreeLLMAPIEngine
+from .siliconflow import SiliconFlowEngine
+from .openrouter import OpenRouterEngine
 
 def create_engine(provider: str, config: dict) -> BaseEngine:
     """创建 API 引擎实例"""
@@ -76,7 +81,33 @@ def create_engine(provider: str, config: dict) -> BaseEngine:
             api_key=config.get("STABILITY_API_KEY"),
             model=config.get("STABILITY_MODEL", "stable-diffusion-xl-1024-v1-0")
         )
-    
+
+    elif provider == "free_multimodal_proxy":
+        return FreeMultimodalProxyEngine(
+            base_url=config.get("FREE_MULTIMODAL_PROXY_URL"),
+            model=config.get("FREE_MULTIMODAL_PROXY_MODEL", "zimage"),
+            proxy_token=config.get("FREE_MULTIMODAL_PROXY_TOKEN"),
+        )
+
+    elif provider == "freellmapi":
+        return FreeLLMAPIEngine(
+            base_url=config.get("FREELLMAPI_URL"),
+            model=config.get("FREELLMAPI_MODEL", "auto"),
+            api_key=config.get("FREELLMAPI_KEY"),
+        )
+
+    elif provider == "siliconflow":
+        return SiliconFlowEngine(
+            api_key=config.get("SILICONFLOW_API_KEY"),
+            model=config.get("SILICONFLOW_MODEL", "sd-turbo"),
+        )
+
+    elif provider == "openrouter":
+        return OpenRouterEngine(
+            api_key=config.get("OPENROUTER_API_KEY"),
+            model=config.get("OPENROUTER_MODEL", "bytedance-seed/seedream-4.5"),
+        )
+        
     else:
         raise ValueError(f"不支持的 API 提供商: {provider}")
 
@@ -97,4 +128,9 @@ __all__ = [
     'StabilityEngine',      # ✅ 新增
     'create_engine',
     'create_api_engine',
+    
+    'FreeMultimodalProxyEngine',
+    'FreeLLMAPIEngine',
+    'SiliconFlowEngine',
+    'OpenRouterEngine',    
 ]
