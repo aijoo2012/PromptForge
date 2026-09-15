@@ -307,7 +307,7 @@ class AgnesEngine:
         seed: int = None,
     ) -> Image.Image:
         """文生图"""
-        size = self._get_size(width, height)
+        size = self._to_size_tier(width, height)
         
         # ✅ Agnes 的 seed 范围：-1 到 999
         if seed is not None:
@@ -359,7 +359,24 @@ class AgnesEngine:
         return self._download_image(image_url)
     
     # ==================== 图生图 ====================
-    
+
+    def _to_size_tier(self, width: int, height: int) -> str:
+        """将具体宽高转换为 Agnes 官方推荐的尺寸档位。
+
+        官方推荐档位：1K / 2K / 3K / 4K。
+        旧版精确尺寸（如 1024x768）虽然兼容，但会被标准化处理，
+        这里直接按长边映射到对应档位。
+        """
+        max_edge = max(width, height)
+        if max_edge <= 1024:
+            return "1K"
+        elif max_edge <= 2048:
+            return "2K"
+        elif max_edge <= 3072:
+            return "3K"
+        else:
+            return "4K"
+            
     # api_engines/agnes.py - 完整的 image_to_image 方法
     def image_to_image(
         self,
@@ -374,13 +391,14 @@ class AgnesEngine:
     ) -> Image.Image:
         """
         图生图 - 支持单张或多张图片（Agnes 多图合成）
-        
+
         Args:
             image: 单张图片 (Image.Image) 或多张图片 (List[Image.Image])
-        
-        说明:
-            - 单张图: 传 image 字符串
-            - 多张图: 传 image 数组（Agnes 支持多图合成）
+
+        官方参数说明（https://wiki.agnes-ai.com）：
+            - image: string[] 类型，图生图必填
+            - 需要放在 extra_body.image 中，以数组形式传递
+            - 支持公网 URL 或 Data URI Base64
         """
         # ✅ 统一处理为列表
         if isinstance(image, list):
@@ -390,12 +408,12 @@ class AgnesEngine:
 
         # ✅ 缩放每张图片（关键！）
         images = [self._resize_for_api(img, max_size=1024) for img in images]
-    
+
         # 用第一张图确定尺寸（如果没有指定）
         first_image = images[0]
         if width is None or height is None:
             width, height = first_image.size
-        
+
         # 限制最大尺寸
         max_size = 1024
         if width > max_size or height > max_size:
@@ -404,71 +422,65 @@ class AgnesEngine:
             height = int(height * scale)
             width = ((width + 7) // 8) * 8
             height = ((height + 7) // 8) * 8
-        
-        size = self._get_size(width, height)
-        
+
+        # ✅ 使用官方推荐的档位制尺寸
+        size = self._to_size_tier(width, height)
+
         # Agnes 的 seed 范围：-1 到 999
         if seed is not None:
             if seed > 999:
                 seed = seed % 1000
             elif seed < -1:
                 seed = -1
-        
-        # ✅ 构建请求数据
+
+        # ✅ 关键：所有图片编码为 base64 Data URI 数组
+        image_list = [
+            f"data:image/png;base64,{self._image_to_base64(img)}"
+            for img in images
+        ]
+
+        # ✅ 构建请求数据（image 放在 extra_body 内，以数组形式传递）
         data = {
             "model": self.image_model,
             "prompt": prompt,
             "n": 1,
             "size": size,
+            "extra_body": {
+                "image": image_list,              # ✅ string[] 数组
+                "response_format": "url",         # ✅ 放在 extra_body 内
+            },
         }
-        
-        # ✅ 关键：根据图片数量决定用 image (单张) 还是 image 数组（多张）
-        if len(images) == 1:
-            # 单张图：传统方式
-            img_base64 = self._image_to_base64(images[0])
-            data["image"] = f"data:image/png;base64,{img_base64}"
-        else:
-            # 多张图：Agnes 的多图合成格式
-            # 官方文档示例可能使用 "image" 数组，也可能使用 "images"
-            # 我们先尝试 "image" 数组（按你之前查到的文档）
-            image_list = [
-                f"data:image/png;base64,{self._image_to_base64(img)}"
-                for img in images
-            ]
-            # ✅ 优先使用 "image" 数组（Agnes 官方文档格式）
-            data["image"] = image_list
-            # 备选：如果 API 不认识 "image" 数组，可以尝试 "images"
-            # data["images"] = image_list
-        
+
         if seed is not None:
             data["seed"] = seed
-        
+
         if strength and 0 < strength < 1:
             data["strength"] = strength
-        
+
         print(f"🔍 Agnes AI 图生图")
         print(f"🔍 模型: {self.image_model}, 尺寸: {size}, 强度: {strength}")
         print(f"🔍 图片数量: {len(images)}")
         print(f"🔍 请求参数: {list(data.keys())}")
-        
+        print(f"🔍 extra_body keys: {list(data['extra_body'].keys())}")
+
         # 发送请求
         result = self._request("images/generations", data)
-        
+
         # 解析图片 URL（保持原有逻辑）
         image_url = None
         if 'data' in result and result['data']:
             image_url = result['data'][0].get('url')
-        
+
         if not image_url and 'output' in result:
             output = result['output']
             if 'results' in output and output['results']:
                 image_url = output['results'][0].get('url')
             elif 'image_url' in output:
                 image_url = output['image_url']
-        
+
         if not image_url:
             raise Exception(f"无法解析图片URL，响应: {json.dumps(result)[:300]}")
-        
+
         return self._download_image(image_url)
     
     # ==================== 推理/对话 ====================
