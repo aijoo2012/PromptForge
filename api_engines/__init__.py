@@ -49,7 +49,10 @@ def create_engine(provider: str, config: dict) -> BaseEngine:
     
     elif provider == "pollinations":
         return PollinationsEngine(
-            model=config.get("POLLINATIONS_MODEL", None)
+            api_key=config.get("POLLINATIONS_API_KEY"),
+            model=config.get("POLLINATIONS_MODEL"),
+            video_model=config.get("POLLINATIONS_VIDEO_MODEL"),
+            audio_model=config.get("POLLINATIONS_AUDIO_MODEL"),
         )
     
     elif provider == "agnes":

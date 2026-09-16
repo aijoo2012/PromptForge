@@ -54,9 +54,17 @@ class Settings:
     hf_api_token: str = os.getenv("HF_API_TOKEN", "")
     hf_model: str = os.getenv("HF_MODEL", "sdxl")
     
-    # ----- Pollinations AI (完全免费，无需 API Key) -----
-    pollinations_model: str = os.getenv("POLLINATIONS_MODEL", "flux")
-    
+
+    # ----- Pollinations AI (新 API，需要 API Key) -----
+    pollinations_api_key: str = os.getenv("POLLINATIONS_API_KEY", "")
+    pollinations_model: str = os.getenv(
+        "POLLINATIONS_MODEL", "black-forest-labs/flux.1-schnell"
+    )
+    pollinations_audio_model: str = os.getenv(
+        "POLLINATIONS_AUDIO_MODEL", "community/NamanSoni78/aura-2-amalthea-en"
+    )
+    pollinations_video_model: str = os.getenv("POLLINATIONS_VIDEO_MODEL", "")
+        
     # ----- Agnes AI (需注册获取 API Key) -----
     agnes_api_key: str = os.getenv("AGNES_API_KEY", "")
     agnes_model: str = os.getenv("AGNES_MODEL", "flux")
@@ -169,7 +177,10 @@ class Settings:
                 "HF_MODEL": self.hf_model,
             },
             "pollinations": {
+                "POLLINATIONS_API_KEY": self.pollinations_api_key,
                 "POLLINATIONS_MODEL": self.pollinations_model,
+                "POLLINATIONS_VIDEO_MODEL": self.pollinations_video_model,
+                "POLLINATIONS_AUDIO_MODEL": self.pollinations_audio_model,
             },
             "agnes": {
                 "AGNES_API_KEY": self.agnes_api_key,

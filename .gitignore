@@ -70,3 +70,4 @@ build/
 .wechat_state.json 
 output/ 
 *.pdf 
+"project_code_dump.txt" 
