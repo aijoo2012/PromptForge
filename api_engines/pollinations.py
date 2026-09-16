@@ -408,8 +408,45 @@ class PollinationsEngine:
         quality_suffix = "professional photography, cinematic lighting, 8k uhd, intricate details"
         return f"{quality_prefix}, {prompt}, {quality_suffix}"
         
+    def _translate_zh_to_en(self, text: str) -> str:
+        """
+        用 Pollinations 简单文本端点做中→英翻译。
+        不需要 API Key，避免 403 权限问题。
+        """
+        try:
+            instruction = (
+                "Translate the following Chinese prompt into concise English "
+                "for a text-to-image model. Keep all visual details "
+                "(subject, clothing, pose, scene, style, lighting). "
+                "Output ONLY the English translation, no explanation.\n\n"
+                f"Chinese: {text}"
+            )
+            encoded = urllib.parse.quote(instruction)
+            resp = requests.get(
+                f"{self.base_url}/text/{encoded}",
+                params={"model": "openai-fast"},
+                timeout=20,
+                headers=self._get_headers(),
+            )
+            if resp.status_code == 200:
+                translated = resp.text.strip()
+                # 去掉可能的引号、前缀
+                translated = translated.strip('"').strip("'")
+                if translated and len(translated) > 3:
+                    print(f"🔍 中文兜底翻译: {translated[:120]}...")
+                    return translated
+        except Exception as e:
+            print(f"⚠️ 兜底翻译失败: {e}")
+        return text
+
+
     def _clean_prompt(self, prompt: str) -> str:
-        """清理 prompt：保留中文原文，不翻译，只做去重和长度限制"""
+        """
+        清理 prompt：
+        - 检测到中文时，自动走兜底翻译
+        - 保留质量词（不删）
+        - 去重 + 长度限制
+        """
         clean = prompt.strip()
 
         # 清理无意义动词
@@ -419,6 +456,10 @@ class PollinationsEngine:
 
         if not clean:
             return clean
+
+        # ── 检测中文，走兜底翻译 ──
+        if any('\u4e00' <= c <= '\u9fff' for c in clean):
+            clean = self._translate_zh_to_en(clean)
 
         # ── 检测是否已有质量词 ──
         clean_lower = clean.lower()
@@ -450,7 +491,7 @@ class PollinationsEngine:
             result = result[:max_length].rsplit(",", 1)[0]
 
         return result
-        
+    
     # ==================== 文生图 ====================
 
     def generate_single(
