@@ -383,13 +383,22 @@ class ImageGenerator:
     # ==================== 工具方法 ====================
 
     def _save_image(self, image: Image.Image, prompt: str, prefix: str = "img") -> str:
-        """保存图片"""
+        """保存图片。
+
+        命名规则：{prefix}_{序号:02d}_{时间戳}.png
+        不再把 prompt 拼进文件名（避免 AI 痕迹 + 中文乱码）。
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_prompt = "".join(c for c in prompt[:30] if c.isalnum() or c in " _-") or "image"
-        filename = f"{timestamp}_{prefix}_{safe_prompt}.png"
         output_dir = Path(self.config["output_dir"])
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # 找下一个可用序号
+        existing = sorted(output_dir.glob(f"{prefix}_*.png"))
+        next_idx = len(existing) + 1
+
+        filename = f"{prefix}_{next_idx:02d}_{timestamp}.png"
         filepath = output_dir / filename
+
         image.save(filepath)
         logger.info(f"✅ 图片已保存: {filepath}")
         return str(filepath)

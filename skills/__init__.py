@@ -11,6 +11,7 @@ from .tech_hot_article.skill import TechHotArticle  # ✅ 新增
 from .image_generator import ImageGenerator    # ✅ 新增
 from .video_generator import VideoGenerator
 from .social_auto_upload import SocialAutoUpload
+from .daily_pipeline import DailyPipeline
 
 __all__ = [
     'NewsAggregator',
@@ -22,5 +23,6 @@ __all__ = [
     'TechHotArticle',  # ✅ 新增
     'ImageGenerator',    # ✅ 新增
     'VideoGenerator',
-    'SocialAutoUpload',    
+    'SocialAutoUpload',   
+    'DailyPipeline',     
 ]

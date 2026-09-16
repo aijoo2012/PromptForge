@@ -19,12 +19,30 @@ logger = logging.getLogger(__name__)
 
 
 def make_heading(entry: Dict[str, Any]) -> str:
-    """从文件名生成友好标题（供 skill.py 与本模块共用）"""
+    """生成友好的文章小节标题。
+
+    规则：
+      1. 已经是"作品01"格式 → 直接返回"作品 01"
+      2. 从文件名里提取有意义的文本（去日期前缀、去 api_/text2img_ 前缀）
+      3. 名字太短或没意义 → 用"作品 XX"兜底
+    """
     name = Path(entry["filename"]).stem
-    name = re.sub(r"^\d{8}[_\-\s]*", "", name)   # 去日期前缀
-    name = re.sub(r"^api[_\-\s]*", "", name)     # 去 api_ 前缀
+
+    # 规则 1：识别 "作品01" 这类
+    m = re.match(r"^作品\s*(\d+)$", name)
+    if m:
+        return f"作品 {int(m.group(1)):02d}"
+
+    # 规则 2：清理常见前缀
+    name = re.sub(r"^\d{8}[_\-\s]*", "", name)       # 日期前缀
+    name = re.sub(r"^(api|text2img|img2img)[_\-\s]*", "", name)
     name = name.replace("_", " ").strip()
-    return (name or f"作品 {entry['index']}")[:40]
+
+    # 规则 3：兜底
+    if not name or len(name) < 3 or name.isdigit():
+        return f"作品 {entry['index']:02d}"
+
+    return name[:40]
 
 
 # ============================================================
