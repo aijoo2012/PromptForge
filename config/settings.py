@@ -84,7 +84,7 @@ class Settings:
     video_segment_duration: int = int(os.getenv("VIDEO_SEGMENT_DURATION", "10"))
     
     # ----- Free API (社区免费代理，无需注册) -----
-    freeapi_model: str = os.getenv("FREEAPI_MODEL", "flux")
+    freeapi_model: str = os.getenv("FREEAPI_MODEL", "qwen3.7-plus")
     
     # ✅ 新增 Replicate API
     replicate_api_token: str = os.getenv("REPLICATE_API_TOKEN", "")

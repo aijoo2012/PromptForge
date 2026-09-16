@@ -14,20 +14,21 @@ import random
 class FreeAPIEngine:
     """Free API 图像生成引擎 (社区免费代理)"""
     
-    def __init__(self, model: str = "grok-imagine-image-lite", base_url: str = None):
+    def __init__(self, model: str = "qwen3.7-plus", base_url: str = None):
         self.base_url = base_url or "https://openai.good.hidns.vip/v1"
         self.api_key = "https://github.com/smanx/free-api"
         
         # ✅ 使用传入的 model（命令行或 config 指定的）
         self.model = model
         
-        # 可用模型列表
+        # 2. 更新 available_models 列表
         self.available_models = [
-            "grok-imagine-image-lite",
-            "qwen3.7-plus",
-            "flux",
-            "zimage",
-            "gptimage"
+            "qwen3.7-plus",  # 优先使用 Qwen
+            "qwen-vl-plus",   # 或其他可用的 Qwen 模型
+            # "grok-imagine-image-lite", # 已失效，注释掉或移除
+            # "flux", # 已失效
+            # "zimage", # 需确认是否仍可用
+            # "gptimage" # 需确认是否仍可用
         ]
         
         # 确保传入的模型在列表中
@@ -40,9 +41,9 @@ class FreeAPIEngine:
         # ⭐ 关键修复：不再覆盖 self.model，保留用户传入的模型
         
         # 支持的尺寸
+        # 3. 更新 supported_sizes 列表，与项目文档保持一致
         self.supported_sizes = [
-            "256x256", "512x512", "1024x1024",
-            "1024x768", "768x1024",
+            "1024x1024", "1024x1792", "1792x1024",
             "1280x720", "720x1280",
         ]
         
@@ -59,6 +60,7 @@ class FreeAPIEngine:
         print(f"🔍 可用模型: {self.available_models}")
         print(f"🔍 当前模型: {self.model}")
         print(f"⚠️ 注意: Free API 有 IP 限流 (10秒5次)")
+        print(f"🔍 [DEBUG] 最终生效的模型: {self.model}")
     
     def _fetch_models(self):
         """获取可用模型列表，保留传入的模型"""
@@ -87,11 +89,8 @@ class FreeAPIEngine:
         except Exception as e:
             print(f"⚠️ 获取模型列表异常: {e}")
         
-        # 确保一些常用图像模型在列表中（但不覆盖用户指定的）
-        default_models = ["grok-imagine-image-lite", "qwen3.7-plus", "flux"]
-        for m in default_models:
-            if m not in self.available_models:
-                self.available_models.append(m)
+        # 注意：不再追加已失效的默认模型（grok-imagine-image-lite / flux）
+        # 如果 API 获取失败，沿用 __init__ 中初始化的 available_models
     
     def _get_size(self, width: int, height: int) -> str:
         """获取支持的尺寸格式"""

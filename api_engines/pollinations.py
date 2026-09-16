@@ -330,65 +330,127 @@ class PollinationsEngine:
 
     # ==================== 中文 Prompt 翻译 ====================
 
-    def _to_english_prompt(self, prompt: str) -> str:
-        """将中文 Prompt 转换为英文"""
-        if all(ord(c) < 128 for c in prompt):
+
+    def _translate_with_llm(self, prompt: str) -> str:
+        """
+        用 Pollinations 自带的免费 LLM 做高质量翻译。
+        如果翻译失败，返回原始 prompt。
+        """
+        try:
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a professional prompt translator for text-to-image models. "
+                        "Translate the user's Chinese prompt into concise, vivid English suitable for Flux/SDXL. "
+                        "Keep visual details (subject, clothing, pose, scene, style, lighting). "
+                        "Do NOT add extra elements. Output ONLY the English prompt, no explanations."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ]
+            resp = self._request(
+                "POST", "/v1/chat/completions",
+                data={
+                    "model": "openai",
+                    "messages": messages,
+                    "temperature": 0.3,
+                    "max_tokens": 300,
+                },
+                timeout=30,
+            )
+            result = resp.json()
+            translated = result["choices"][0]["message"]["content"].strip()
+            if translated and len(translated) > 5:
+                print(f"🔍 LLM 翻译: {translated[:120]}...")
+                return translated
+        except Exception as e:
+            print(f"⚠️ LLM 翻译失败，使用原始 prompt: {e}")
+        return prompt
+
+    def _build_enhanced_prompt(self, prompt: str) -> str:
+        """
+        构建增强 prompt：
+        - 清理无意义动词
+        - 保留原始描述
+        - 自动追加质量词（如果原文没有）
+        - 中文走 LLM 翻译
+        """
+        prompt = prompt.strip()
+
+        # 清理无意义的引导动词
+        for word in [
+            "生成图片", "生成一张", "生成", "帮我画", "画一张", "画",
+            "create an image of", "generate an image of", "generate", "create",
+        ]:
+            prompt = prompt.replace(word, "")
+        prompt = prompt.strip("，,。.：: ")
+
+        if not prompt:
             return prompt
 
-        translations = {
-            "日落": "sunset", "日出": "sunrise",
-            "风景": "landscape", "山水": "mountain and water",
-            "水墨画": "ink wash painting", "国画": "traditional Chinese painting",
-            "风格": "style", "自然": "nature", "景观": "scenery",
-            "美女": "beautiful woman", "女孩": "girl", "男孩": "boy",
-            "男人": "man", "女人": "woman",
-            "动漫": "anime", "赛博朋克": "cyberpunk",
-            "城市": "city", "森林": "forest", "海洋": "ocean",
-            "沙滩": "beach", "星空": "starry sky",
-            "唯美": "aesthetic", "写实": "photorealistic",
-            "肖像": "portrait", "全身": "full body", "半身": "half body",
-            "侧面": "side view", "正面": "front view",
-            "温暖": "warm", "冷色": "cold color",
-            "金色": "golden", "蓝色": "blue", "红色": "red",
-            "粉色": "pink", "浪漫": "romantic",
-            "梦幻": "dreamy", "复古": "vintage", "未来": "futuristic",
-            "高清": "high definition", "细节": "detailed",
-            "光影": "light and shadow", "氛围": "atmosphere",
-        }
+        # ── 中文翻译：优先走 LLM，失败则保留原文 ──
+        if any('\u4e00' <= c <= '\u9fff' for c in prompt):
+            prompt = self._translate_with_llm(prompt)
 
-        result = prompt
-        for cn, en in translations.items():
-            result = result.replace(cn, en)
-        return result
+        # ── 检测是否已有质量词 ──
+        prompt_lower = prompt.lower()
+        has_quality = any(
+            q in prompt_lower
+            for q in ["masterpiece", "best quality", "highly detailed",
+                      "8k", "ultra detailed", "professional photography"]
+        )
+        if has_quality:
+            return prompt
 
+        # ── 追加质量词 ──
+        quality_prefix = "masterpiece, best quality, highly detailed, sharp focus"
+        quality_suffix = "professional photography, cinematic lighting, 8k uhd, intricate details"
+        return f"{quality_prefix}, {prompt}, {quality_suffix}"
+        
     def _clean_prompt(self, prompt: str) -> str:
-        """清理质量词并限制长度"""
-        clean = prompt
-        for word in self.quality_words:
+        """清理 prompt：保留中文原文，不翻译，只做去重和长度限制"""
+        clean = prompt.strip()
+
+        # 清理无意义动词
+        for word in ["生成图片", "生成一张", "生成", "帮我画", "画一张", "画"]:
             clean = clean.replace(word, "")
-            clean = clean.replace(word.title(), "")
+        clean = clean.strip("，,。.：: ")
 
-        clean = ", ".join([p.strip() for p in clean.split(",") if p.strip()])
         if not clean:
-            clean = prompt
+            return clean
 
-        english = self._to_english_prompt(clean)
+        # ── 检测是否已有质量词 ──
+        clean_lower = clean.lower()
+        has_quality = any(
+            q in clean_lower
+            for q in ["masterpiece", "best quality", "highly detailed",
+                      "8k", "ultra detailed", "professional photography"]
+        )
+        if not has_quality:
+            quality_prefix = "masterpiece, best quality, highly detailed, sharp focus"
+            quality_suffix = "professional photography, cinematic lighting, 8k uhd, intricate details"
+            clean = f"{quality_prefix}, {clean}, {quality_suffix}"
 
-        max_length = 300
-        if len(english) > max_length:
-            parts = english.split(",")
-            truncated = ""
-            for part in parts:
-                if len(truncated) + len(part) < max_length:
-                    truncated += part + ", "
-                else:
-                    break
-            english = truncated.rstrip(", ")
-        if len(english) > max_length:
-            english = english[:max_length]
+        # ── 按逗号分割，去重 ──
+        parts = [p.strip() for p in clean.split(",") if p.strip()]
+        seen = set()
+        unique = []
+        for p in parts:
+            key = p.lower()
+            if key not in seen:
+                seen.add(key)
+                unique.append(p)
 
-        return english
+        result = ", ".join(unique)
 
+        # ── 长度限制 ──
+        max_length = 500
+        if len(result) > max_length:
+            result = result[:max_length].rsplit(",", 1)[0]
+
+        return result
+        
     # ==================== 文生图 ====================
 
     def generate_single(
